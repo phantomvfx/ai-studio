@@ -56,6 +56,10 @@ if "art_input" not in st.session_state:
     st.session_state.art_input = ""
 if "camera_input" not in st.session_state:
     st.session_state.camera_input = ""
+if "final_prompts" not in st.session_state:
+    st.session_state.final_prompts = ""
+if "last_seed" not in st.session_state:
+    st.session_state.last_seed = 0
 
 # --- SIDEBAR: PRE-PRODUCTION ---
 st.sidebar.divider()
@@ -99,7 +103,7 @@ if st.sidebar.button("Start Another Story (Reset)", disabled=reset_disabled):
     keys_to_delete = [
         "phase", "story_arc", "screenplay", "consultant_suggestions", 
         "generation_seed", "concept_input", "art_input", "camera_input",
-        "story_concept" # Legacy key just in case
+        "story_concept", "final_prompts", "last_seed" # Legacy key just in case
     ]
     for key in keys_to_delete:
         if key in st.session_state:
@@ -138,22 +142,26 @@ elif st.session_state.phase == 2:
     
     with st.spinner(f"Art Director, Cinematographer, and Render Artist are working... (Seed: {st.session_state.generation_seed})"):
         try:
-            # We append a hidden seed text to the end of the screenplay just to force the LLM to process it slightly differently
-            seeded_screenplay = st.session_state.screenplay + f"\n[Hidden System Note: Procedural generation variant {st.session_state.generation_seed}]"
-            
-            final_prompts = pipeline.run_phase_2(
-                seeded_screenplay,
-                st.session_state.art_input,
-                st.session_state.camera_input,
-                engine_mode=engine_mode,
-                model_name=model_name
-            )
-            
+            if st.session_state.last_seed != st.session_state.generation_seed:
+                # We append a hidden seed text to the end of the screenplay just to force the LLM to process it slightly differently
+                seeded_screenplay = st.session_state.screenplay + f"\n[Hidden System Note: Procedural generation variant {st.session_state.generation_seed}]"
+                
+                final_prompts_output = pipeline.run_phase_2(
+                    seeded_screenplay,
+                    st.session_state.art_input,
+                    st.session_state.camera_input,
+                    engine_mode=engine_mode,
+                    model_name=model_name
+                )
+                
+                st.session_state.final_prompts = final_prompts_output
+                st.session_state.last_seed = st.session_state.generation_seed
+                
             st.success(f"Workflow Complete! (Variant {st.session_state.generation_seed})")
             
             st.markdown("### 🍌 Nano Banana Pro Rendering Prompts")
             # Display final prompts formatted as code for easy copy/paste
-            st.code(final_prompts, language="markdown")
+            st.code(st.session_state.final_prompts, language="markdown")
             
             # --- SAVING LOGIC ---
             slug = re.sub(r'[^a-zA-Z0-9\s]', '', st.session_state.concept_input)
@@ -168,7 +176,7 @@ elif st.session_state.phase == 2:
             os.makedirs("outputs", exist_ok=True)
             
             with open(filepath, "w", encoding="utf-8") as f:
-                f.write(final_prompts)
+                f.write(st.session_state.final_prompts)
             
             with open(filepath, "r", encoding="utf-8") as f:
                 md_data = f.read()
