@@ -1,0 +1,4 @@
+griptape[google]
+ollama
+streamlit
+python-dotenv
