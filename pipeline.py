@@ -69,20 +69,39 @@ def run_phase_1(concept, engine_mode="Cloud", model_name="gemini-1.5-pro"):
     screenplay_task.run(story_arc)
     screenplay = screenplay_task.output.value
     
-    # Task 3: Creative Consultant
-    consultant_task = PromptTask(
+    # Task 3: Art Consultant
+    art_consultant_task = PromptTask(
         "Review this screenplay:\n{{ args[0] }}\n\n"
-        "Provide Art Direction and Cinematography suggestions. "
+        "Provide Art Direction suggestions. "
         "CRITICAL INSTRUCTION: If the screenplay explicitly features a specific model, object, or location (e.g., 'Porsche 911 996'), your suggestions "
         "must provide 3 DIFFERENT visual worlds/atmospheres for that specific element, NOT swap it for different elements. Keep the core specific subject consistent across options.",
-        rulesets=[Ruleset(name="CreativeConsultant", rules=[Rule(load_prompt("creative_consultant.md"))])],
+        rulesets=[Ruleset(name="ArtConsultant", rules=[Rule(load_prompt("art_consultant.md"))])],
         prompt_driver=creative_driver,
-        id="ConsultantTask"
+        id="ArtConsultantTask"
     )
-    consultant_task.run(screenplay)
-    suggestions = consultant_task.output.value
+    art_consultant_task.run(screenplay)
+    art_suggestions = art_consultant_task.output.value
     
-    return story_arc, screenplay, suggestions
+    return story_arc, screenplay, art_suggestions
+
+def run_phase_1_5(screenplay, art_prefs, engine_mode="Cloud", model_name="gemini-1.5-pro"):
+    """
+    Phase 1.5: Camera Consultant
+    Generates camera concepts based on the chosen art direction.
+    """
+    creative_driver, _ = get_drivers(engine_mode, model_name)
+    
+    art_instructions = f"Chosen Art Direction: {art_prefs}" if art_prefs else "Chosen Art Direction: None provided. Invent the most cinematic look."
+    
+    camera_consultant_task = PromptTask(
+        f"Review this screenplay:\n{{{{ args[0] }}}}\n\n{art_instructions}\n"
+        "Provide Cinematography suggestions specifically tailored to capture the requested art direction.",
+        rulesets=[Ruleset(name="CameraConsultant", rules=[Rule(load_prompt("camera_consultant.md"))])],
+        prompt_driver=creative_driver,
+        id="CameraConsultantTask"
+    )
+    camera_consultant_task.run(screenplay)
+    return camera_consultant_task.output.value
 
 def run_phase_2(screenplay, art_prefs, camera_prefs, engine_mode="Cloud", model_name="gemini-1.5-pro"):
     """
@@ -93,8 +112,9 @@ def run_phase_2(screenplay, art_prefs, camera_prefs, engine_mode="Cloud", model_
     creative_driver, technical_driver = get_drivers(engine_mode, model_name)
     
     # Let's ensure if preferences are empty we handle it gracefully in exactly what we pass to the tasks.
-    art_instructions = f"User Art Preferences: {art_prefs}" if art_prefs else "User Art Preferences: None. Invent one from consultant options."
-    camera_instructions = f"User Camera Preferences: {camera_prefs}" if camera_prefs else "User Camera Preferences: None. Invent one from consultant options."
+    fallback_instruction = "Choose the most cinematic and professional path from the previous suggestions."
+    art_instructions = f"User Art Preferences: {art_prefs}" if art_prefs else f"User Art Preferences: {fallback_instruction}"
+    camera_instructions = f"User Camera Preferences: {camera_prefs}" if camera_prefs else f"User Camera Preferences: {fallback_instruction}"
 
     # Task 4: Art Director
     art_task = PromptTask(
@@ -125,5 +145,18 @@ def run_phase_2(screenplay, art_prefs, camera_prefs, engine_mode="Cloud", model_
         id="RenderTask"
     )
     render_task.run(camera_directed)
+    render_prompts = render_task.output.value
     
-    return render_task.output.value
+    # Task 7: Storyboard Consolidation
+    storyboard_task = PromptTask(
+        "Core Visual Descriptions (6 Scenes):\n{{ args[0] }}\n\n"
+        "Task Goal: Take the core visual descriptions of all 6 scenes above and synthesize them into ONE single concise Text-to-Image (T2I) prompt.\n"
+        "Formatting Rule: The prompt must explicitly instruct the AI to create a '3x2 grid storyboard panels image'.\n"
+        "Instruction: 'A professional 6-panel storyboard grid (3 columns, 2 rows). Each panel depicts a sequential scene from the story: [Briefly list the 6 scene actions derived from the inputs]. Maintain absolute character and environment continuity across all panels. High-contrast sketch and cinematic lighting style.'",
+        prompt_driver=technical_driver,
+        id="StoryboardTask"
+    )
+    storyboard_task.run(render_prompts)
+    storyboard_prompt = storyboard_task.output.value
+    
+    return render_prompts, storyboard_prompt
