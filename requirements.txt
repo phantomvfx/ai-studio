@@ -1,4 +1,5 @@
-griptape[google]
+google-genai
 ollama
 streamlit
 python-dotenv
+python-telegram-bot
