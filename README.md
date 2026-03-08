@@ -20,7 +20,7 @@
 ## 🚀 Installation & Setup
 
 ### Prerequisites
-1. **Python 3.9+**
+1. **Python 3.12**
 2. **Google Gemini API Key** (for Cloud mode)
 3. **Ollama** installed locally (for Local mode)
 4. *(Optional)* **ComfyUI** running locally on port `8188` (for Local Image Generation)
