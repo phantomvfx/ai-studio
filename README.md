@@ -27,7 +27,7 @@
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/your-username/aistudio.git
+git clone https://github.com/phantomvfx/ai-studio.git
 cd aistudio
 
 # Create a virtual environment
