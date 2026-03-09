@@ -453,5 +453,6 @@ if workflow_mode == "30-Second Storytelling" and st.session_state.phase == 3:
         st.rerun()
 
 st.sidebar.divider()
-if st.sidebar.button("🚪 Exit / Close Studio"):
-    os._exit(0)
+if not is_streamlit_cloud:
+    if st.sidebar.button("🚪 Exit / Close Studio"):
+        os._exit(0)
