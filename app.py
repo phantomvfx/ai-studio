@@ -33,11 +33,20 @@ workflow_mode = st.sidebar.radio(
     help="Storytelling takes you through a 3-phase creative process. Product Shot delivers a 1-shot API JSON output."
 )
 
-engine_mode = st.sidebar.radio(
-    "Engine Mode:",
-    ["Cloud", "Local"],
-    help="Cloud uses Google Gemini. Local uses Ollama."
-)
+# Detect if running on Streamlit Community Cloud
+# Streamlit injects `HOSTNAME` or `STREAMLIT_SERVER_PORT` for its cloud containers typically
+# A safer way to check Streamlit Cloud specifically is `st.secrets` or checking standard cloud envs
+is_streamlit_cloud = os.environ.get('STREAMLIT_SHARING_MODE') is not None or os.environ.get('HOSTNAME', '').startswith('localhost') == False and os.environ.get('USER') == 'appuser'
+
+if is_streamlit_cloud:
+    st.sidebar.info("☁️ **Running in Cloud Mode** (Local GPU routing is disabled on this server).")
+    engine_mode = "Cloud"
+else:
+    engine_mode = st.sidebar.radio(
+        "Engine Mode:",
+        ["Cloud", "Local"],
+        help="Cloud uses Google Gemini. Local uses Ollama."
+    )
 
 # API Key handling for Cloud
 api_key = None
