@@ -22,6 +22,16 @@ if os.path.exists("logo.png"):
     except Exception:
         pass # In case it's an invalid image type or corrupted
 
+# Hide Streamlit UI elements (footer, main menu, fullscreen buttons)
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            button[title="View fullscreen"] {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 st.title("🎬 Multi-Agent AI Studio")
 
 # --- SIDEBAR CONFIGURATION ---
