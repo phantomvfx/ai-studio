@@ -454,8 +454,9 @@ else:
 st.sidebar.divider()
 reset_disabled = st.session_state.phase == 0 and not st.session_state.product_shot_json
 if st.sidebar.button("Start Another Run (Reset)", disabled=reset_disabled):
-    reset_state()
-    st.rerun()
+    st.session_state.clear()
+    import streamlit.components.v1 as components
+    components.html("<script>window.parent.location.reload();</script>", height=0)
 
 if workflow_mode == "30-Second Storytelling" and st.session_state.phase == 3:
     if st.sidebar.button("Generate from another seed"):
