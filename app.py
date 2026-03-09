@@ -14,7 +14,7 @@ except ImportError:
 
 load_dotenv()
 
-st.set_page_config(page_title="AI Studio - Nano Banana Pro", layout="wide")
+st.set_page_config(page_title="AI Studio", layout="wide")
 
 if os.path.exists("logo.png"):
     try:
@@ -70,9 +70,12 @@ if engine_mode == "Cloud":
 else:
     local_model_selector = st.sidebar.selectbox(
         "Intelligence Engine (Local):",
-        ["qwen3.5:9b", "qwen3.5:cloud", "kimi-k2.5:cloud", "gemma3:12b", "gpt-oss:20b"]
+        ["qwen3-vl:8b", "qwen3.5:9b", "qwen3.5:cloud", "kimi-k2.5:cloud", "gemma3:12b", "gpt-oss:20b"],
+        index=0  # Sets the first item as the default selection
     )
-    if "qwen3.5" in local_model_selector:
+    if "qwen3-vl" in local_model_selector:
+        model_name = "qwen3-vl:8b"
+    elif "qwen3.5" in local_model_selector:
         if "cloud" in local_model_selector:
             model_name = "qwen3.5:cloud"
         else:
@@ -89,19 +92,36 @@ session_vars = [
     "phase", "story_arc", "screenplay", "art_suggestions", "camera_suggestions",
     "generation_seed", "concept_input", "art_input", "camera_input",
     "final_art_pref", "final_cam_pref", "final_prompts", "storyboard_prompt",
-    "last_seed", "product_shot_json", "preview_image_bytes"
+    "last_seed", "product_shot_json", "preview_image_bytes", "last_uploaded_image"
 ]
 for var in session_vars:
     if var not in st.session_state:
-        st.session_state[var] = 0 if var in ["phase", "last_seed"] else (1 if var == "generation_seed" else ("" if var != "preview_image_bytes" else None))
+        st.session_state[var] = 0 if var in ["phase", "last_seed"] else (1 if var == "generation_seed" else ("" if var != "preview_image_bytes" and var != "last_uploaded_image" else None))
 
 def reset_state():
     for key in session_vars:
         if key in st.session_state:
-            st.session_state[key] = 0 if key in ["phase", "last_seed"] else (1 if key == "generation_seed" else ("" if key != "preview_image_bytes" else None))
+            st.session_state[key] = 0 if key in ["phase", "last_seed"] else (1 if key == "generation_seed" else ("" if key != "preview_image_bytes" and key != "last_uploaded_image" else None))
 
 st.sidebar.divider()
 st.sidebar.subheader("Concept Initialization")
+
+uploaded_image = st.sidebar.file_uploader("Upload an Image Concept (Optional):", type=["jpg", "jpeg", "png"])
+if uploaded_image is not None and st.session_state.get("last_uploaded_image") != uploaded_image.file_id:
+    with st.spinner("Agents are analyzing image concept..."):
+        try:
+            caption = pipeline.describe_image(
+                uploaded_image.getvalue(),
+                engine_mode=engine_mode,
+                api_key=api_key,
+                mime_type=uploaded_image.type
+            )
+            st.session_state.concept_input = caption
+            st.session_state.last_uploaded_image = uploaded_image.file_id
+            st.rerun()
+        except Exception as e:
+            st.sidebar.error(f"Image analysis failed: {e}")
+
 st.sidebar.text_area("Enter your concept:", key="concept_input", placeholder="A cyberpunk detective chases a rogue android through neon-lit streets...")
 
 # -------------------------------------------------------------

@@ -59,6 +59,35 @@ def load_prompt(filename):
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
+def describe_image(image_bytes, engine_mode="Local", api_key=None, mime_type="image/jpeg", prompt="Describe this image in detail to use as a creative concept. Output ONLY the raw descriptive caption. Do not include titles, labels, meta-commentary, or notes like 'Ideal for a storyboard'.", model_name="qwen3-vl:8b"):
+    if engine_mode == "Cloud":
+        from google.genai import types
+        client = get_google_client(api_key)
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    prompt
+                ]
+            )
+            return response.text
+        except Exception as e:
+            print(f"Gemini Image Describing Error: {e}")
+            raise e
+    else:
+        try:
+            client = ollama.Client(host='http://127.0.0.1:11434')
+            messages = [
+                {"role": "user", "content": prompt, "images": [image_bytes]}
+            ]
+            response = client.chat(model=model_name, messages=messages)
+            return response['message']['content']
+        except Exception as e:
+            print(f"Ollama Image Describing Error: {e}")
+            raise e
+
+
 def run_phase_1(concept, engine_mode="Cloud", model_name="gemini-3.1-pro-preview", api_key=None):
     # Story Writer
     system_rules = load_prompt("story_frameworks.md")
@@ -227,7 +256,7 @@ def generate_image_comfyui(prompt):
     # but we will poll it so we can return the exact image to the Streamlit UI.
     
     import time
-    max_retries = 150 # 150 seconds timeout
+    max_retries = 600 # 600 seconds timeout
     image_data = None
     
     for _ in range(max_retries):
