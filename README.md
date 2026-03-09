@@ -1,6 +1,6 @@
 # 🎬 Multi-Agent AI Studio (Visual Storytelling)
 
-**Live Demo:** [https://ai-studio-phlabs.streamlit.app/](https://ai-studio-phlabs.streamlit.app/)
+**Live Demo:** [https://phantasmalabs.com/ai-studio/](https://phantasmalabs.com/ai-studio/)
 
 **AI Studio** is an advanced, dual-engine (Cloud & Local) AI pipeline designed to generate continuous narrative storyboards and detailed product shots using a combination of LLMs and generative image diffusion models.
 
