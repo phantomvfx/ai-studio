@@ -70,10 +70,13 @@ CLOUD_DEPLOY=true
 
 ### 3. Run
 ```bash
-# Streamlit directly
+# Cloud version (Streamlit Community Cloud / remote server)
 streamlit run app.py
 
-# OR Windows batch launcher
+# Local version (Ollama + optional ComfyUI)
+streamlit run applocal.py
+
+# OR using the Windows batch launcher (runs applocal.py + Telegram bot)
 run_studio.bat
 ```
 
@@ -105,21 +108,22 @@ run_studio.bat
 
 ```
 ai-studio/
-├── app.py                  # Streamlit UI
+├── app.py                  # ☁️  Cloud entry point (Gemini only, no local controls)
+├── applocal.py             # 💻  Local entry point (Ollama + optional Cloud mode)
+├── ui_core.py              # Shared workflow UI (Product Shot, Storytelling, session state)
 ├── pipeline.py             # Agent orchestration, LLM routing, ComfyUI API
 ├── cli_telegram.py         # Telegram bot (optional)
 ├── requirements.txt
-├── run_studio.bat          # Windows launcher
+├── run_studio.bat          # Windows launcher → runs applocal.py + Telegram bot
 ├── knowledge/
-│   ├── story_frameworks.md       # Story Writer system prompt
-│   ├── screenplay_standards.md   # Screenwriter system prompt
-│   ├── art_consultant.md         # Art Consultant system prompt
-│   ├── art_direction.md          # Art Direction enrichment prompt
-│   ├── camera_consultant.md      # Camera Consultant system prompt
-│   ├── camera_motion.md          # Camera motion enrichment prompt
+│   ├── story_frameworks.md
+│   ├── screenplay_standards.md
+│   ├── art_consultant.md
+│   ├── art_direction.md
+│   ├── camera_consultant.md
+│   ├── camera_motion.md
 │   ├── render_artist_style.md    # Render Artist prompting guide (Nano Banana)
-│   ├── product_shot_rules.md     # Product Shot pipeline rules
-│   └── nano_banana_schema.json   # Schema reference (Product Shot)
+│   └── product_shot_rules.md
 ├── comfyui/
 │   └── ZimageRender.json         # ComfyUI workflow
 └── outputs/                      # Generated .md exports
@@ -129,7 +133,7 @@ ai-studio/
 
 ## 🛠️ Customization
 
-- **Add Local Models**: Update the `local_model_selector` dropdown in `app.py` — it flows automatically into `pipeline.py`.
+- **Add Local Models**: Update the `local_model_selector` dropdown in `applocal.py` — it flows automatically into `pipeline.py`.
 - **Adjust the Render Artist**: Edit `knowledge/render_artist_style.md` to change prompting style, formula, or vocabulary.
-- **Product Shot Schema**: Edit `knowledge/nano_banana_schema.json` to enforce different output fields.
-- **Cloud Auto-Detection**: Set `CLOUD_DEPLOY=true` in your server environment to automatically hide the engine/model selectors and default to Cloud + Gemini.
+- **Modify Shared Workflow**: Edit `ui_core.py` — changes apply to both cloud and local simultaneously.
+- **Cloud Auto-Detection**: `app.py` is always cloud — no env vars needed. For the local launcher, `applocal.py` defaults to Local engine.
