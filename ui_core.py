@@ -20,11 +20,11 @@ def _parse_t2i_i2v(block: str):
     Returns (t2i_text, i2v_text) — either may be empty string.
     """
     t2i_match = re.search(
-        r'\*\*T2I Prompt:\*\*\s*\n(.*?)(?=\n\*\*I2V Animation Prompt:|$)',
+        r'\*\*T2I Prompt:\*\*\s*\n(.*?)(?=\n\s*\*\*I2V Animation Prompt:|\Z)',
         block, re.DOTALL | re.IGNORECASE
     )
     i2v_match = re.search(
-        r'\*\*I2V Animation Prompt:\*\*\s*\n(.*?)$',
+        r'\*\*I2V Animation Prompt:\*\*\s*\n(.*?)(?:\n---|\Z)',
         block, re.DOTALL | re.IGNORECASE
     )
 
@@ -36,6 +36,41 @@ def _parse_t2i_i2v(block: str):
     t2i = clean(t2i_match.group(1)) if t2i_match else ""
     i2v = clean(i2v_match.group(1)) if i2v_match else ""
     return t2i, i2v
+
+
+def _build_per_shot_md(final_prompts: str) -> str:
+    """
+    Convert the render artist output into a clearly structured markdown string
+    with per-shot T2I and I2V sections labelled sh 01, sh 02, etc.
+    Used for the MD download deliverable.
+    """
+    scene_pattern = re.compile(r'(###\s+Scene\s+\d+[^\n]*)', re.IGNORECASE)
+    parts = scene_pattern.split(final_prompts.strip())
+
+    if len(parts) <= 1:
+        # No scene headers found — return raw content
+        return final_prompts
+
+    lines = []
+    shot_num = 1
+    for i in range(1, len(parts), 2):
+        header = parts[i].strip().lstrip('#').strip()
+        content = parts[i + 1].strip() if i + 1 < len(parts) else ""
+        t2i, i2v = _parse_t2i_i2v(content)
+        sh_label = f"sh {shot_num:02d}"
+        lines.append(f"### {sh_label} — {header}\n")
+        if t2i:
+            lines.append(f"#### {sh_label} T2I (Text-to-Image)\n")
+            lines.append(t2i + "\n")
+        if i2v:
+            lines.append(f"#### {sh_label} I2V (Image-to-Video)\n")
+            lines.append(i2v + "\n")
+        if not t2i and not i2v:
+            lines.append(content + "\n")
+        lines.append("---\n")
+        shot_num += 1
+
+    return "\n".join(lines)
 
 
 def render_prompt_blocks(output_text: str):
@@ -157,6 +192,9 @@ def render_product_shot(engine_mode, model_name, api_key):
                     )
                     st.session_state.product_shot_output = out
                     st.session_state.preview_image_bytes = None
+                    if engine_mode == "Local":
+                        pipeline.unload_ollama_model(model_name)
+                        st.info("🧹 VRAM cleared — GPU is ready for ComfyUI rendering.")
                 except Exception as e:
                     st.error(f"Error during execution: {e}")
 
@@ -333,6 +371,9 @@ def render_storytelling(engine_mode, model_name, api_key):
                     st.session_state.storyboard_prompt = s_prompt
                     st.session_state.last_seed = st.session_state.generation_seed
                     st.session_state.preview_image_bytes = None
+                    if engine_mode == "Local":
+                        pipeline.unload_ollama_model(model_name)
+                        st.info("🧹 VRAM cleared — GPU is ready for ComfyUI rendering.")
 
                 st.success(f"Workflow Complete! (Variant {st.session_state.generation_seed})")
 
@@ -370,6 +411,7 @@ def render_storytelling(engine_mode, model_name, api_key):
                 slug = re.sub(r'[^a-zA-Z0-9\s]', '', st.session_state.concept_input)
                 slug = "_".join(slug.split()[:3]).lower() or "story"
                 date_str = datetime.now().strftime("%Y%m%d")
+                per_shot_md = _build_per_shot_md(formatted_prompts)
                 md_content = (
                     f"# Original Concept\n\n{st.session_state.concept_input}\n\n"
                     f"# Phase 1: Pre-Production\n\n"
@@ -381,8 +423,8 @@ def render_storytelling(engine_mode, model_name, api_key):
                     f"## Cinematographer Suggestions\n\n{st.session_state.camera_suggestions}\n\n"
                     f"## Chosen Cinematography\n\n{st.session_state.final_cam_pref}\n\n"
                     f"# Phase 2: Production\n\n"
-                    f"## Full Production Script (Final Prompts)\n\n{formatted_prompts}\n\n"
-                    f"## Storyboard Prompt\n\n{st.session_state.storyboard_prompt}"
+                    f"## Per-Shot Rendering Prompts\n\n{per_shot_md}\n\n"
+                    f"## Consolidated Storyboard Prompt\n\n{st.session_state.storyboard_prompt}"
                 )
                 st.download_button(
                     label="📥 Download Full Package (.md)",

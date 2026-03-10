@@ -55,7 +55,21 @@ def call_llm(system_prompt, user_prompt, engine_mode="Cloud", model_name="gemini
         response = client.chat(**kwargs)
         return response['message']['content']
 
+
+def unload_ollama_model(model_name: str):
+    """
+    Evicts the given Ollama model from VRAM by sending a keep_alive=0 request.
+    Call this after local generation is complete so ComfyUI can use the GPU.
+    """
+    try:
+        client = ollama.Client(host='http://127.0.0.1:11434')
+        client.chat(model=model_name, messages=[], keep_alive=0)
+    except Exception:
+        pass  # Non-fatal — model may already be unloaded or not present
+
+
 def load_prompt(filename):
+
     path = os.path.join(os.path.dirname(__file__), "knowledge", filename)
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
