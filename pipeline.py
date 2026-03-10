@@ -169,27 +169,7 @@ def run_product_shot_mode(concept, engine_mode="Cloud", model_name="gemini-2.5-f
     response_text = response_text.replace("```json", "").replace("```", "").strip()
     return response_text
 
-def generate_image(prompt, api_key=None):
-    """
-    Calls Google GenAI Image generation using Gemini 2.5 Flash Image.
-    """
-    client = get_google_client(api_key)
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash-image',
-            contents=prompt
-        )
-        for candidate in response.candidates:
-            if not candidate.content or not candidate.content.parts:
-                continue
-            for part in candidate.content.parts:
-                if hasattr(part, 'inline_data') and part.inline_data:
-                    # Return the bytes of the generated image
-                    return part.inline_data.data
-    except Exception as e:
-        print(f"Image Gen Error: {e}")
-        raise e
-    return None
+
 
 def generate_image_comfyui(prompt):
     """
