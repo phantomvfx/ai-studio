@@ -2,7 +2,7 @@
 
 **Live Demo:** [https://phantasmalabs.com/ai-studio/](https://phantasmalabs.com/ai-studio/)
 
-**AI Studio** is an advanced, dual-engine (Cloud & Local) AI pipeline designed to generate continuous narrative storyboards and detailed product shots using a combination of LLMs and generative image diffusion models.
+**AI Studio** is an experimental exploration into  AI orchestration , focused on the programmatic translation of narrative intent into structured metadata. By utilizing LLMs as a logic engine to generate JSON-templated manifests, the pipeline establishes a controlled, reproducible framework for 2TI (Text-to-Image) generation. This architecture prioritizes schema enforcement over simple prompting, allowing for the iterative testing of shot consistency, lighting parameters, and asset management across disparate generative diffusion models.
 
 ## ✨ Features
 
@@ -10,8 +10,10 @@
   - **Cloud Mode**: Harnesses Google GenAI (`gemini-2.5-flash`, `gemini-3.1-pro-preview`) for high-quality, high-speed reasoning and image synthesis.
   - **Local Mode**: Runs entirely offline via Ollama, supporting models like `qwen3.5:9b`, `gemma3:12b`, `kimi-k2.5:cloud`, and `gpt-oss:20b` for complete privacy.
 - **Workflow Modes**:
-  - **30-Second Storytelling**: A comprehensive multi-phase pipeline that breaks a concept down into a structured story arc, formats it into a screenplay, offers Art & Cinematography suggestions, and finally outputs an array of robust JSON rendering prompts conforming strictly to the `Nano Banana Pro` schema.
+  - **Storytelling**: A comprehensive multi-phase pipeline that breaks a concept down into a structured story arc, formats it into a screenplay, offers Art & Cinematography suggestions, and finally outputs an array of robust JSON rendering prompts.
   - **Product Shot**: A streamlined, strict zero-shot pipeline that directly parses a concept into the final JSON array layout.
+  
+  *Note: These tools focus on creating template text-to-image (t2i) prompts in JSON format for further human editing and submission to your preferred generative AI choice.*
 - **Integrated Image Generation**: 
   - **Gemini 2.5 Flash**: Generate high-speed Storyboard previews natively in Cloud Mode.
   - **Local ComfyUI Integration**: Seamlessly dispatches generation jobs to a local ComfyUI instance running the `ZimageRender.json` workflow.

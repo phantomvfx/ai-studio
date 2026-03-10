@@ -39,24 +39,15 @@ st.sidebar.header("⚙️ Configuration")
 
 workflow_mode = st.sidebar.radio(
     "Workflow Mode:",
-    ["30-Second Storytelling", "Product Shot"],
+    ["Storytelling", "Product Shot"],
     help="Storytelling takes you through a 3-phase creative process. Product Shot delivers a 1-shot API JSON output."
 )
 
-# Detect if running on Streamlit Community Cloud
-# Streamlit injects `HOSTNAME` or `STREAMLIT_SERVER_PORT` for its cloud containers typically
-# A safer way to check Streamlit Cloud specifically is `st.secrets` or checking standard cloud envs
-is_streamlit_cloud = os.environ.get('STREAMLIT_SHARING_MODE') is not None or os.environ.get('HOSTNAME', '').startswith('localhost') == False and os.environ.get('USER') == 'appuser'
-
-if is_streamlit_cloud:
-    st.sidebar.info("☁️ **Running in Cloud Mode** (Local GPU routing is disabled on this server).")
-    engine_mode = "Cloud"
-else:
-    engine_mode = st.sidebar.radio(
-        "Engine Mode:",
-        ["Cloud", "Local"],
-        help="Cloud uses Google Gemini. Local uses Ollama."
-    )
+engine_mode = st.sidebar.radio(
+    "Engine Mode:",
+    ["Cloud", "Local"],
+    help="Cloud uses Google Gemini. Local uses Ollama."
+)
 
 # API Key handling for Cloud
 api_key = None
@@ -64,20 +55,10 @@ if engine_mode == "Cloud":
     intelligence_selector = st.sidebar.selectbox(
         "Intelligence Engine (Cloud):",
         [
-            "Gemini 3.1 Flash Preview (Fast/High Quota)", 
-            "Gemini 3.1 Pro Preview (High Reasoning/Lower Quota)",
-            "Gemini 2.5 Flash",
-            "Gemini 2.5 Pro"
+            "Gemini 2.5 Flash"
         ]
     )
-    if "3.1 Flash" in intelligence_selector:
-        model_name = "gemini-3-flash-preview"
-    elif "3.1 Pro" in intelligence_selector:
-        model_name = "gemini-3.1-pro-preview"
-    elif "2.5 Flash" in intelligence_selector:
-        model_name = "gemini-2.5-flash"
-    elif "2.5 Pro" in intelligence_selector:
-        model_name = "gemini-2.5-pro"
+    model_name = "gemini-2.5-flash"
         
     # Local .env vs BYO key logic depends on environment. We can just provide a field.
     env_key = os.getenv("GOOGLE_API_KEY")
@@ -149,6 +130,7 @@ st.sidebar.text_area("Enter your concept:", key="concept_input", placeholder="A 
 if workflow_mode == "Product Shot":
     st.markdown("### 📸 Product Shot")
     st.info("Generates a single, hyper-detailed product shot composition outputted as JSON for ComfyUI.")
+    st.info("👈 Enter your concept in the sidebar to begin.")
     
     if st.sidebar.button("Generate Product Shot"):
         if not st.session_state.concept_input:
@@ -191,17 +173,6 @@ if workflow_mode == "Product Shot":
             
         col_img1, col_img2 = st.columns(2)
         with col_img1:
-            if st.button("Generate Image Preview via Gemini 2.5 Flash"):
-                if engine_mode == "Cloud" and api_key:
-                    with st.spinner("Generating Image Preview..."):
-                        try:
-                            img_bytes = pipeline.generate_image(extracted_prompt, api_key=api_key)
-                            st.session_state.preview_image_bytes = img_bytes
-                        except Exception as e:
-                            st.error(f"Image Gen Error: {e}")
-                else:
-                    st.error("Image generation requires Cloud mode and a valid Google API Key.")
-            
             if st.button("Generate Local Image (ComfyUI)"):
                 with st.spinner("Dispatching to Local ComfyUI..."):
                     try:
@@ -236,10 +207,12 @@ if workflow_mode == "Product Shot":
 
 
 # -------------------------------------------------------------
-# MODE 2: 30-SECOND STORYTELLING
+# MODE 2: STORYTELLING
 # -------------------------------------------------------------
 else:
-    st.markdown("### 🎥 30-Second Short-Form Visual Storytelling Workflow")
+    st.markdown("### 🎥 Storytelling Workflow")
+    st.info("Guides you through a 3-phase creative process from narrative conceptualization to a multi-shot storyboard script.")
+    st.info("👈 Enter your concept in the sidebar to begin.")
     
     if st.sidebar.button("Generate Script"):
         if not st.session_state.concept_input:
@@ -303,10 +276,7 @@ else:
                 st.session_state.phase = 3
 
     # Main Panel Rendering
-    if st.session_state.phase == 0:
-        st.info("👈 Enter your concept in the sidebar to begin.")
-        
-    elif st.session_state.phase == 1:
+    if st.session_state.phase == 1:
         st.subheader("Phase 1: Pre-Production Review")
         col1, col2 = st.columns(2)
         with col1:
@@ -390,17 +360,6 @@ else:
                 
                 col_img1, col_img2 = st.columns(2)
                 with col_img1:
-                    if st.button("Generate Storyboard Preview via Gemini 2.5 Flash"):
-                        if engine_mode == "Cloud" and api_key:
-                            with st.spinner("Generating Storyboard Image Preview..."):
-                                try:
-                                    img_bytes = pipeline.generate_image(st.session_state.storyboard_prompt, api_key=api_key)
-                                    st.session_state.preview_image_bytes = img_bytes
-                                except Exception as e:
-                                    st.error(f"Image Gen Error: {e}")
-                        else:
-                            st.error("Image generation requires Cloud mode and a valid Google API Key.")
-
                     if st.button("Generate Local Image (ComfyUI)"):
                         with st.spinner("Dispatching Storyboard to Local ComfyUI..."):
                             try:
@@ -458,12 +417,11 @@ if st.sidebar.button("Start Another Run (Reset)", disabled=reset_disabled):
     import streamlit.components.v1 as components
     components.html("<script>window.parent.location.reload();</script>", height=0)
 
-if workflow_mode == "30-Second Storytelling" and st.session_state.phase == 3:
+if workflow_mode == "Storytelling" and st.session_state.phase == 3:
     if st.sidebar.button("Generate from another seed"):
         st.session_state.generation_seed += 1
         st.rerun()
 
 st.sidebar.divider()
-if not is_streamlit_cloud:
-    if st.sidebar.button("🚪 Exit / Close Studio"):
-        os._exit(0)
+if st.sidebar.button("🚪 Exit / Close Studio"):
+    os._exit(0)
