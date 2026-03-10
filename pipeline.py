@@ -137,12 +137,36 @@ def run_phase_2(screenplay, art_prefs, camera_prefs, engine_mode="Cloud", model_
     )
     final_prompts = call_llm(render_rules, render_prompt, engine_mode, model_name, 0.7, api_key=api_key)
 
-    # Storyboard condensation
+    # Storyboard condensation — 6-panel 3×2 grid
+    storyboard_system = (
+        "You are a storyboard prompt engineer. Your only job is to convert 6 scene descriptions "
+        "into a single Text-to-Image prompt that renders a 6-panel storyboard grid.\n\n"
+        "ABSOLUTE RULES:\n"
+        "1. The output image MUST be a 3-column × 2-row grid (3 panels top row, 3 panels bottom row).\n"
+        "2. There MUST be exactly 6 panels. Never fewer, never more.\n"
+        "3. Each panel MUST correspond to exactly one scene in sequence: "
+        "Panel 1 = sh 01, Panel 2 = sh 02, Panel 3 = sh 03, Panel 4 = sh 04, Panel 5 = sh 05, Panel 6 = sh 06.\n"
+        "4. Each panel must be visually distinct — different subject position, lighting, or framing from the others.\n"
+        "5. Output ONLY the raw prompt text. No titles, no labels, no explanations, no JSON."
+    )
+    storyboard_user = (
+        f"Convert the 6 scenes below into ONE storyboard prompt.\n\n"
+        f"STEP 1 — Extract the core visual essence of each scene in one sentence each:\n"
+        f"Panel 1 (sh 01): <essence>\n"
+        f"Panel 2 (sh 02): <essence>\n"
+        f"Panel 3 (sh 03): <essence>\n"
+        f"Panel 4 (sh 04): <essence>\n"
+        f"Panel 5 (sh 05): <essence>\n"
+        f"Panel 6 (sh 06): <essence>\n\n"
+        f"STEP 2 — Write ONE unified Text-to-Image prompt that renders all 6 panels in a "
+        f"3-column × 2-row grid layout at 16:9 aspect ratio. "
+        f"The prompt must explicitly reference each of the 6 panels in order, "
+        f"describe their visual content, and establish the grid layout. "
+        f"Include cinematic quality enhancers. Output ONLY the final prompt text.\n\n"
+        f"SCENES:\n{final_prompts}"
+    )
     storyboard_prompt = call_llm(
-        "You are a technical prompt synthesizer. OUTPUT ONLY THE FINAL PROMPT TEXT. NO INTRODUCTIONS, NO EXPLANATIONS, NO NOTES.",
-        f"Condense these 6 scene prompts into ONE Text-to-Image prompt for a 3-column x 2-row grid storyboard in 16:9 format.\n"
-        f"CRITICAL: Describe exactly 6 distinct panels. Output ONLY the raw prompt text.\n\n"
-        f"SCENES:\n{final_prompts}",
+        storyboard_system, storyboard_user,
         engine_mode, model_name, 0.1, api_key=api_key
     )
 
