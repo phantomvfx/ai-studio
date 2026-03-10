@@ -150,23 +150,16 @@ def run_phase_2(screenplay, art_prefs, camera_prefs, engine_mode="Cloud", model_
 
 def run_product_shot_mode(concept, engine_mode="Cloud", model_name="gemini-2.5-flash", api_key=None):
     """
-    1-shot Product Shot pipeline using the Nano Banana Render Artist guide.
-    Outputs a narrative T2I + I2V prose prompt.
+    1-shot Product Shot pipeline.
+    Runs the 4-stage synthesis and outputs a structured prose T2I + I2V prompt.
     """
     system_rules = load_prompt("product_shot_rules.md")
-    render_rules = load_prompt("render_artist_style.md")
-
     prompt = (
         f"Process this product shot concept: {concept}\n\n"
-        f"Apply your 4-stage pipeline (Brief Analysis → Composition → Lighting & Camera → Materiality). "
-        f"Then, acting as a Render Artist using the following guide, produce the final output:\n\n"
-        f"{render_rules}\n\n"
-        f"Output format:\n"
-        f"**T2I Prompt:**\n> (full narrative prompt following the Nano Banana formula)\n\n"
-        f"**I2V Animation Prompt:**\n> (camera motion instruction for video generation)\n\n"
-        f"No JSON. No schema. No preamble. Output only the two prompt blocks above."
+        f"Run your full 4-stage synthesis pipeline, then output the final result "
+        f"using the OUTPUT FORMAT defined in your instructions. "
+        f"No JSON. No preamble. Output only the two prompt blocks."
     )
-
     return call_llm(system_rules, prompt, engine_mode, model_name, temperature=0.6, api_key=api_key)
 
 
