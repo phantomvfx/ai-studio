@@ -43,49 +43,53 @@ workflow_mode = st.sidebar.radio(
     help="Storytelling takes you through a 3-phase creative process. Product Shot delivers a 1-shot API JSON output."
 )
 
-engine_mode = st.sidebar.radio(
-    "Engine Mode:",
-    ["Cloud", "Local"],
-    help="Cloud uses Google Gemini. Local uses Ollama."
+# Detect cloud deployment — hides engine/model selectors when deployed remotely
+IS_CLOUD_DEPLOY = (
+    os.getenv("STREAMLIT_SHARING_MODE") is not None
+    or os.getenv("CLOUD_DEPLOY", "false").lower() == "true"
 )
 
-# API Key handling for Cloud
+# API Key / engine setup
 api_key = None
-if engine_mode == "Cloud":
-    intelligence_selector = st.sidebar.selectbox(
-        "Intelligence Engine (Cloud):",
-        [
-            "Gemini 2.5 Flash"
-        ]
-    )
+if IS_CLOUD_DEPLOY:
+    # Cloud deploy: silently default to Cloud + Gemini 2.5 Flash, no UI shown
+    engine_mode = "Cloud"
     model_name = "gemini-2.5-flash"
-        
-    # Local .env vs BYO key logic depends on environment. We can just provide a field.
     env_key = os.getenv("GOOGLE_API_KEY")
     key_input = st.sidebar.text_input("Google API Key (Leave blank to use .env):", type="password")
     api_key = key_input if key_input else env_key
-    
     if not api_key:
-        st.sidebar.warning("Cloud mode requires a Google API Key.")
+        st.sidebar.warning("A Google API Key is required.")
 else:
-    local_model_selector = st.sidebar.selectbox(
-        "Intelligence Engine (Local):",
-        ["qwen3-vl:8b", "qwen3.5:9b", "qwen3.5:cloud", "kimi-k2.5:cloud", "gemma3:12b", "gpt-oss:20b"],
-        index=0  # Sets the first item as the default selection
+    engine_mode = st.sidebar.radio(
+        "Engine Mode:",
+        ["Cloud", "Local"],
+        help="Cloud uses Google Gemini. Local uses Ollama."
     )
-    if "qwen3-vl" in local_model_selector:
-        model_name = "qwen3-vl:8b"
-    elif "qwen3.5" in local_model_selector:
-        if "cloud" in local_model_selector:
-            model_name = "qwen3.5:cloud"
-        else:
-            model_name = "qwen3.5:9b"
-    elif "kimi" in local_model_selector:
-        model_name = "kimi-k2.5:cloud"
-    elif "12b" in local_model_selector:
-        model_name = "gemma3:12b"
+    if engine_mode == "Cloud":
+        model_name = "gemini-2.5-flash"
+        st.sidebar.selectbox("Intelligence Engine (Cloud):", ["Gemini 2.5 Flash"])
+        env_key = os.getenv("GOOGLE_API_KEY")
+        key_input = st.sidebar.text_input("Google API Key (Leave blank to use .env):", type="password")
+        api_key = key_input if key_input else env_key
+        if not api_key:
+            st.sidebar.warning("Cloud mode requires a Google API Key.")
     else:
-        model_name = "gpt-oss:20b"
+        local_model_selector = st.sidebar.selectbox(
+            "Intelligence Engine (Local):",
+            ["qwen3-vl:8b", "qwen3.5:9b", "qwen3.5:cloud", "kimi-k2.5:cloud", "gemma3:12b", "gpt-oss:20b"],
+            index=0
+        )
+        if "qwen3-vl" in local_model_selector:
+            model_name = "qwen3-vl:8b"
+        elif "qwen3.5" in local_model_selector:
+            model_name = "qwen3.5:cloud" if "cloud" in local_model_selector else "qwen3.5:9b"
+        elif "kimi" in local_model_selector:
+            model_name = "kimi-k2.5:cloud"
+        elif "12b" in local_model_selector:
+            model_name = "gemma3:12b"
+        else:
+            model_name = "gpt-oss:20b"
 
 # --- SESSION STATE INITIALIZATION ---
 session_vars = [
@@ -318,42 +322,9 @@ else:
                 
                 st.markdown("### 🍌 Nano Banana Pro Rendering Prompts")
                 
-                # Parse final prompts as JSON (Array of objects)
-                formatted_prompts = ""
-                try:
-                    # Clean potential markdown wrapping from LLM
-                    raw_json = st.session_state.final_prompts.replace("```json", "").replace("```", "").strip()
-                    prompts_list = json.loads(raw_json)
-                    
-                    if isinstance(prompts_list, dict) and "scenes" in prompts_list:
-                        prompts_list = prompts_list["scenes"]
-                        
-                    if isinstance(prompts_list, list):
-                        for scene_data in prompts_list:
-                            scene_label = scene_data.pop("scene_label", "Scene")
-                            i2v_prompt = scene_data.pop("i2v_prompt", None)
-                            
-                            st.markdown(f"### {scene_label}")
-                            if i2v_prompt:
-                                st.markdown("**I2V Animation Prompt:**")
-                                st.code(i2v_prompt, language="markdown")
-                                formatted_prompts += f"**{scene_label} I2V Prompt:**\n```markdown\n{i2v_prompt}\n```\n\n"
-                                
-                            with st.expander("Shot Details (JSON)", expanded=False):
-                                scene_json_str = json.dumps(scene_data, indent=2)
-                                st.code(scene_json_str, language="json")
-                                
-                            formatted_prompts += f"**{scene_label} JSON:**\n```json\n{scene_json_str}\n```\n\n"
-                    else:
-                        with st.expander("Raw Output (JSON)", expanded=False):
-                            st.code(raw_json, language="json")
-                        formatted_prompts = st.session_state.final_prompts
-                except Exception as parse_err:
-                    # Fallback if the LLM completely failed to output valid JSON
-                    st.warning("Failed to parse output as strict JSON. Displaying raw output.")
-                    with st.expander("Raw Output", expanded=False):
-                        st.code(st.session_state.final_prompts, language="json")
-                    formatted_prompts = st.session_state.final_prompts
+                # Render Artist now outputs narrative markdown prompts — display directly
+                formatted_prompts = st.session_state.final_prompts
+                st.markdown(formatted_prompts)
                 
                 st.markdown("### 🖼️ Storyboard Consolidation Prompt")
                 st.code(st.session_state.storyboard_prompt, language="markdown")
@@ -395,7 +366,7 @@ else:
                     f"## Cinematographer Suggestions\n\n{st.session_state.camera_suggestions}\n\n"
                     f"## Chosen Cinematography\n\n{st.session_state.final_cam_pref}\n\n"
                     f"# Phase 2: Production\n\n"
-                    f"## Full Production Script (JSON / Final Prompts)\n\n{formatted_prompts}\n\n"
+                    f"## Full Production Script (Final Prompts)\n\n{formatted_prompts}\n\n"
                     f"## Storyboard Prompt\n\n{st.session_state.storyboard_prompt}"
                 )
                 
@@ -422,6 +393,4 @@ if workflow_mode == "Storytelling" and st.session_state.phase == 3:
         st.session_state.generation_seed += 1
         st.rerun()
 
-st.sidebar.divider()
-if st.sidebar.button("🚪 Exit / Close Studio"):
-    os._exit(0)
+

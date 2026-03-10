@@ -2,6 +2,7 @@ import os
 import json
 import urllib.request
 import urllib.error
+import urllib.parse
 from google import genai
 from google.genai import types
 import ollama
@@ -11,7 +12,7 @@ def get_google_client(api_key=None):
         return genai.Client(api_key=api_key)
     return genai.Client()
 
-def call_llm(system_prompt, user_prompt, engine_mode="Cloud", model_name="gemini-3.1-pro-preview", temperature=0.7, json_output=False, api_key=None):
+def call_llm(system_prompt, user_prompt, engine_mode="Cloud", model_name="gemini-2.5-flash", temperature=0.7, json_output=False, api_key=None):
     if engine_mode == "Cloud":
         client = get_google_client(api_key)
         config_kwargs = {"temperature": temperature}
@@ -88,7 +89,7 @@ def describe_image(image_bytes, engine_mode="Local", api_key=None, mime_type="im
             raise e
 
 
-def run_phase_1(concept, engine_mode="Cloud", model_name="gemini-3.1-pro-preview", api_key=None):
+def run_phase_1(concept, engine_mode="Cloud", model_name="gemini-2.5-flash", api_key=None):
     # Story Writer
     system_rules = load_prompt("story_frameworks.md")
     prompt = (
@@ -109,66 +110,45 @@ def run_phase_1(concept, engine_mode="Cloud", model_name="gemini-3.1-pro-preview
     
     return story_arc, screenplay, art_suggestions
 
-def run_phase_1_5(screenplay, art_prefs, engine_mode="Cloud", model_name="gemini-3.1-pro-preview", api_key=None):
+def run_phase_1_5(screenplay, art_prefs, engine_mode="Cloud", model_name="gemini-2.5-flash", api_key=None):
     cam_rules = load_prompt("camera_consultant.md")
     art_instructions = f"Chosen Art Direction: {art_prefs}" if art_prefs else "Chosen Art Direction: None provided."
     cam_prompt = f"Review this screenplay:\n{screenplay}\n\n{art_instructions}\nProvide Cinematography suggestions."
     return call_llm(cam_rules, cam_prompt, engine_mode, model_name, 0.8, api_key=api_key)
 
-def run_phase_2(screenplay, art_prefs, camera_prefs, engine_mode="Cloud", model_name="gemini-3.1-pro-preview", api_key=None):
+def run_phase_2(screenplay, art_prefs, camera_prefs, engine_mode="Cloud", model_name="gemini-2.5-flash", api_key=None):
     fallback_instruction = "Choose the most cinematic and professional path."
     art_instructions = f"User Art Preferences: {art_prefs}" if art_prefs else f"User Art Preferences: {fallback_instruction}"
     camera_instructions = f"User Camera Preferences: {camera_prefs}" if camera_prefs else f"User Camera Preferences: {fallback_instruction}"
 
     art_directed = call_llm(load_prompt("art_direction.md"), f"Screenplay:\n{screenplay}\n\n{art_instructions}", engine_mode, model_name, 0.8, api_key=api_key)
     camera_directed = call_llm(load_prompt("camera_motion.md"), f"Art Directed Screenplay:\n{art_directed}\n\n{camera_instructions}", engine_mode, model_name, 0.8, api_key=api_key)
-    
-    schema_rules = load_prompt("nano_banana_schema.json")
-    
+
     render_rules = load_prompt("render_artist_style.md")
     render_prompt = (
-        f"You have received the enriched screenplay data below.\n"
-        f"DATA LOAD:\n{camera_directed}\n\n"
-        f"CRITICAL INSTRUCTION: Do NOT respond with conversational text or acknowledge this message. Immediately process the DATA LOAD above.\n"
-        f"Your entire output MUST be a valid JSON Object containing a single root key called `scenes`. The value of `scenes` MUST be an Array containing exactly 6 JSON objects. Each of those 6 objects must validate against this schema:\n{schema_rules}\n\n"
-        "Include an extra string key `scene_label` (e.g., 'sh 01') at the root of each of the 6 JSON objects to signify which scene it is.\n"
-        "Example structural output (OUTPUT RAW JSON ONLY):\n"
-        "{\n"
-        "  \"scenes\": [\n"
-        "    {\n"
-        "      \"scene_label\": \"sh 01\",\n"
-        "      \"user_intent\": \"string\",\n"
-        "      \"meta\": {},\n"
-        "      \"subject\": [],\n"
-        "      \"scene\": {}\n"
-        "    },\n"
-        "    {\n"
-        "      \"scene_label\": \"sh 02\",\n"
-        "      \"user_intent\": \"string\",\n"
-        "      \"meta\": {},\n"
-        "      \"subject\": [],\n"
-        "      \"scene\": {}\n"
-        "    }\n"
-        "  ]\n"
-        "}\n"
-        "CRITICAL: YOU MUST OUTPUT EXACTLY 6 FULL SCENE OBJECTS IN THE SCENES ARRAY. DO NOT TRUNCATE."
+        f"You have received the enriched screenplay data below. Act as a Render Artist and produce the final prompts.\n\n"
+        f"ENRICHED SCREENPLAY:\n{camera_directed}\n\n"
+        f"INSTRUCTIONS: Using your guide, produce one output block per scene (sh 01 through sh 06). "
+        f"For each scene output:\n"
+        f"### Scene [N] — [scene_label]\n"
+        f"**T2I Prompt:**\n> (full narrative prompt)\n\n"
+        f"**I2V Animation Prompt:**\n> (camera motion instruction)\n\n"
+        f"Output ALL 6 scenes. Do NOT truncate. No conversational filler."
     )
-    # Give the model full JSON output privileges for Phase 2
-    render_prompts_json_str = call_llm(render_rules, render_prompt, engine_mode, model_name, 0.1, json_output=True, api_key=api_key)
-    
+    final_prompts = call_llm(render_rules, render_prompt, engine_mode, model_name, 0.7, api_key=api_key)
+
     # Storyboard condensation
     storyboard_prompt = call_llm(
-        "You are a technical prompt synthesizer. OUTPUT ONLY THE FINAL PROMPT TEXT. NO INTRODUCTIONS, NO EXPLANATIONS, NO NOTES.", 
-        f"Condense these 6 JSON schema scenes into ONE Text-to-Image text prompt (NOT JSON) for a 3 columns 2 rows grid storyboard in a 16:9 image format.\n"
-        f"CRITICAL: The prompt MUST explicitly describe exactly 6 distinct panels/shots to match the 6 scenes.\n\n"
-        f"SCENES:\n{render_prompts_json_str}\n\n"
-        f"CRITICAL INSTRUCTION: Output ONLY the raw generation prompt. Do not say 'Here is the prompt', 'Prompt:', or provide notes.", 
+        "You are a technical prompt synthesizer. OUTPUT ONLY THE FINAL PROMPT TEXT. NO INTRODUCTIONS, NO EXPLANATIONS, NO NOTES.",
+        f"Condense these 6 scene prompts into ONE Text-to-Image prompt for a 3-column x 2-row grid storyboard in 16:9 format.\n"
+        f"CRITICAL: Describe exactly 6 distinct panels. Output ONLY the raw prompt text.\n\n"
+        f"SCENES:\n{final_prompts}",
         engine_mode, model_name, 0.1, api_key=api_key
     )
-    
-    return render_prompts_json_str, storyboard_prompt
 
-def run_product_shot_mode(concept, engine_mode="Cloud", model_name="gemini-3.1-pro-preview", api_key=None):
+    return final_prompts, storyboard_prompt
+
+def run_product_shot_mode(concept, engine_mode="Cloud", model_name="gemini-2.5-flash", api_key=None):
     """
     4-Stage ComfyUI Product Shot API Workflow in one shot.
     Output is strictly JSON format.

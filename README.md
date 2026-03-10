@@ -1,23 +1,35 @@
-# 🎬 Multi-Agent AI Studio (Visual Storytelling)
+# 🎬 Multi-Agent AI Studio
 
 **Live Demo:** [https://phantasmalabs.com/ai-studio/](https://phantasmalabs.com/ai-studio/)
 
-**AI Studio** is an experimental exploration into  AI orchestration , focused on the programmatic translation of narrative intent into structured metadata. By utilizing LLMs as a logic engine to generate JSON-templated manifests, the pipeline establishes a controlled, reproducible framework for 2TI (Text-to-Image) generation. This architecture prioritizes schema enforcement over simple prompting, allowing for the iterative testing of shot consistency, lighting parameters, and asset management across disparate generative diffusion models.
+**AI Studio** is an experimental multi-agent creative pipeline that translates narrative concepts into structured, production-ready image generation prompts. It uses LLMs as a creative engine — passing a concept through specialized agents (Story Writer, Screenwriter, Art Consultant, Camera Consultant, Render Artist) — and culminating in fully-formed **Nano Banana Pro** T2I and I2V prompts ready for submission to any generative model.
+
+---
 
 ## ✨ Features
 
-- **Dual-Engine Flexibility**: 
-  - **Cloud Mode**: Harnesses Google GenAI (`gemini-2.5-flash`, `gemini-3.1-pro-preview`) for high-quality, high-speed reasoning and image synthesis.
-  - **Local Mode**: Runs entirely offline via Ollama, supporting models like `qwen3.5:9b`, `gemma3:12b`, `kimi-k2.5:cloud`, and `gpt-oss:20b` for complete privacy.
-- **Workflow Modes**:
-  - **Storytelling**: A comprehensive multi-phase pipeline that breaks a concept down into a structured story arc, formats it into a screenplay, offers Art & Cinematography suggestions, and finally outputs an array of robust JSON rendering prompts.
-  - **Product Shot**: A streamlined, strict zero-shot pipeline that directly parses a concept into the final JSON array layout.
-  
-  *Note: These tools focus on creating template text-to-image (t2i) prompts in JSON format for further human editing and submission to your preferred generative AI choice.*
-- **Integrated Image Generation**: 
-  - **Gemini 2.5 Flash**: Generate high-speed Storyboard previews natively in Cloud Mode.
-  - **Local ComfyUI Integration**: Seamlessly dispatches generation jobs to a local ComfyUI instance running the `ZimageRender.json` workflow.
-- **Deliverables Export**: Single-click compiled Markdown export containing the entire creative process alongside the final `I2V` (Image-to-Video) prompt blocks.
+- **Dual-Engine Architecture**
+  - **Cloud Mode**: Powered by `gemini-2.5-flash` via Google GenAI. Auto-selected when deployed remotely — engine and model controls are hidden automatically.
+  - **Local Mode**: Runs fully offline via Ollama. Supports `qwen3-vl:8b`, `qwen3.5:9b`, `gemma3:12b`, `kimi-k2.5:cloud`, and `gpt-oss:20b`.
+
+- **Workflow Modes**
+  - **Storytelling**: A 3-phase pipeline — Pre-Production (story arc + screenplay + art direction) → Cinematography → Production (6-scene T2I + I2V prompts + storyboard consolidation).
+  - **Product Shot**: A streamlined 1-shot pipeline that synthesizes a concept directly into a detailed product rendering prompt.
+
+- **Render Artist Output (Nano Banana Pro)**
+  The final stage produces rich, narrative-style T2I prompts using the Nano Banana prompting framework — covering subject, lighting, camera, color grading, materiality, and optional I2V animation instructions. No JSON required.
+
+- **Integrated Image Generation**
+  - **Local ComfyUI**: Dispatches generation jobs to a running ComfyUI instance (`ZimageRender.json` workflow), polls `/history`, and returns the image directly to the UI.
+
+- **Telegram Bot (CLI)**
+  Headless interface for running full campaigns from your phone via `/generate` and `/product` commands.
+
+- **Image Upload**
+  Upload a reference image to auto-generate a descriptive concept caption using the vision model.
+
+- **Deliverables Export**
+  One-click Markdown export of the full creative pipeline — story arc, screenplay, art/camera direction, final prompts, and storyboard.
 
 ---
 
@@ -27,80 +39,97 @@
 1. **Python 3.12**
 2. **Google Gemini API Key** (for Cloud mode)
 3. **Ollama** installed locally (for Local mode)
-4. *(Optional)* **ComfyUI** running locally on port `8188` (for Local Image Generation)
+4. *(Optional)* **ComfyUI** running on port `8188` (for local image generation)
 
 ### 1. Clone & Install
 ```bash
 git clone https://github.com/phantomvfx/ai-studio.git
-cd aistudio
+cd ai-studio
 
-# Create a virtual environment
 python -m venv venv
 
-# Activate the virtual environment
 # Windows:
 venv\Scripts\activate
 # macOS/Linux:
 source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
 ```
 
 ### 2. Environment Variables
-Create a `.env` file in the root directory and add your Google API key:
+Create a `.env` file in the root directory:
 ```env
 GOOGLE_API_KEY=your_genai_api_key_here
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here   # optional
 ```
 
-### 3. Start the Application
-You can run the application directly via Streamlit or by using the provided batch file:
+For remote/server deployments, set this to hide engine controls automatically:
+```env
+CLOUD_DEPLOY=true
+```
+
+### 3. Run
 ```bash
-# Using Streamlit directly
+# Streamlit directly
 streamlit run app.py
 
-# OR using the Windows batch file
+# OR Windows batch launcher
 run_studio.bat
 ```
 
 ---
 
-## 📱 Telegram Bot Integration (CLI)
-AI Studio includes a fully functional, headless Telegram Bot (`cli_telegram.py`) that allows you to generate campaigns directly from your phone.
+## 📱 Telegram Bot (CLI)
 
-1. Message `@BotFather` on Telegram to create a new bot and copy the HTTP API Token.
-2. Add your token to the `.env` file:
-   ```env
-   TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
-   ```
-3. Run `run_studio.bat` (which boots the bot automatically) OR run it manually:
-   ```bash
-   python cli_telegram.py
-   ```
-4. **Usage**: Message your bot `/generate <concept>` for a full Storyboard campaign, or `/product <concept>` for a Product Shot campaign. The bot will autonomously run the entire pipeline through your local models and reply with the compiled `.md` document and a ComfyUI image preview!
+`cli_telegram.py` provides a headless interface to the full pipeline.
+
+1. Create a bot via `@BotFather` on Telegram and copy the HTTP API token.
+2. Add `TELEGRAM_BOT_TOKEN` to your `.env` file.
+3. Run `python cli_telegram.py` (or via `run_studio.bat`).
+4. Commands:
+   - `/generate <concept>` — Full storytelling storyboard campaign
+   - `/product <concept>` — Single product shot prompt
+   - Send an image — Returns a descriptive caption (vision model)
 
 ---
 
-## 🔌 Integrating Local ComfyUI (Zimage)
-If you wish to render storyboards natively on your GPU without calling Cloud APIs, you can use the built-in ComfyUI integration.
+## 🔌 Local ComfyUI Integration
 
-1. Launch your **ComfyUI** instance locally so that it is running at `http://127.0.0.1:8188`.
-2. Ensure you have the `comfyui/ZimageRender.json` workflow present in your AI Studio directory.
-3. In the AI Studio Web UI, click **"Generate Local Image (ComfyUI)"**. The backend will automatically inject the prompt, randomize the diffusion seed, and poll ComfyUI's `/history` endpoint until the image is returned straight into your Streamlit interface.
+1. Launch ComfyUI at `http://127.0.0.1:8188`.
+2. Ensure `comfyui/ZimageRender.json` is present.
+3. Click **"Generate Local Image (ComfyUI)"** in the UI. The backend injects the prompt, randomizes the seed, and polls `/history` until the image is ready.
 
 ---
 
 ## 📂 Project Structure
 
-- `app.py`: The Main Streamlit user interface.
-- `pipeline.py`: Core logic, schema enforcement, API routing, and ComfyUI websocket polling.
-- `cli_telegram.py`: *(Optional)* A CLI/Telegram bot interface for running the core pipeline asynchronously.
-- `knowledge/`: Contains the system instructions, schemas, and markdown rulesets enforcing the LLM behaviors (e.g., `nano_banana_schema.json`, `product_shot_rules.md`).
-- `comfyui/`: Contains the `ZimageRender.json` workflow used for the seamless local API dispatch.
-- `outputs/`: Default save directory for generated `.json` and `.md` assets.
+```
+ai-studio/
+├── app.py                  # Streamlit UI
+├── pipeline.py             # Agent orchestration, LLM routing, ComfyUI API
+├── cli_telegram.py         # Telegram bot (optional)
+├── requirements.txt
+├── run_studio.bat          # Windows launcher
+├── knowledge/
+│   ├── story_frameworks.md       # Story Writer system prompt
+│   ├── screenplay_standards.md   # Screenwriter system prompt
+│   ├── art_consultant.md         # Art Consultant system prompt
+│   ├── art_direction.md          # Art Direction enrichment prompt
+│   ├── camera_consultant.md      # Camera Consultant system prompt
+│   ├── camera_motion.md          # Camera motion enrichment prompt
+│   ├── render_artist_style.md    # Render Artist prompting guide (Nano Banana)
+│   ├── product_shot_rules.md     # Product Shot pipeline rules
+│   └── nano_banana_schema.json   # Schema reference (Product Shot)
+├── comfyui/
+│   └── ZimageRender.json         # ComfyUI workflow
+└── outputs/                      # Generated .md exports
+```
 
 ---
 
-## 🛠️ Modifying the Pipeline
-- **Adding New Local Models**: To add new Ollama targets, simply update the `local_model_selector` UI dropdown in `app.py`, and it will automatically flow down into `pipeline.py`'s `call_llm` routing.
-- **Adjusting the Schema**: Open `knowledge/nano_banana_schema.json`. By altering the required fields here, the Pipeline will rigorously enforce the new ruleset onto the AI engines.
+## 🛠️ Customization
+
+- **Add Local Models**: Update the `local_model_selector` dropdown in `app.py` — it flows automatically into `pipeline.py`.
+- **Adjust the Render Artist**: Edit `knowledge/render_artist_style.md` to change prompting style, formula, or vocabulary.
+- **Product Shot Schema**: Edit `knowledge/nano_banana_schema.json` to enforce different output fields.
+- **Cloud Auto-Detection**: Set `CLOUD_DEPLOY=true` in your server environment to automatically hide the engine/model selectors and default to Cloud + Gemini.
