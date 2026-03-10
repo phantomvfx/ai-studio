@@ -14,6 +14,70 @@ except ImportError:
     ResourceExhausted = Exception
 
 
+def _parse_t2i_i2v(block: str):
+    """
+    Extract T2I and I2V text from a single scene block.
+    Returns (t2i_text, i2v_text) — either may be empty string.
+    """
+    t2i_match = re.search(
+        r'\*\*T2I Prompt:\*\*\s*\n(.*?)(?=\n\*\*I2V Animation Prompt:|$)',
+        block, re.DOTALL | re.IGNORECASE
+    )
+    i2v_match = re.search(
+        r'\*\*I2V Animation Prompt:\*\*\s*\n(.*?)$',
+        block, re.DOTALL | re.IGNORECASE
+    )
+
+    def clean(text):
+        # Strip blockquote markers and excess whitespace
+        lines = [l.lstrip('> ').rstrip() for l in text.strip().splitlines()]
+        return '\n'.join(lines).strip()
+
+    t2i = clean(t2i_match.group(1)) if t2i_match else ""
+    i2v = clean(i2v_match.group(1)) if i2v_match else ""
+    return t2i, i2v
+
+
+def render_prompt_blocks(output_text: str):
+    """
+    Parse render artist output and display T2I and I2V in separate
+    st.code() boxes (with built-in copy button).
+    Handles both single-scene (Product Shot) and multi-scene (Storytelling) output.
+    """
+    # Try to detect multi-scene output by looking for ### Scene headers
+    scene_pattern = re.compile(r'(###\s+Scene\s+\d+[^\n]*)', re.IGNORECASE)
+    parts = scene_pattern.split(output_text.strip())
+
+    if len(parts) > 1:
+        # Multi-scene: parts alternate as [preamble, header, content, header, content ...]
+        for i in range(1, len(parts), 2):
+            header = parts[i].strip().lstrip('#').strip()
+            content = parts[i + 1].strip() if i + 1 < len(parts) else ""
+            st.markdown(f"#### 🎬 {header}")
+            t2i, i2v = _parse_t2i_i2v(content)
+            if t2i:
+                st.caption("🖼 T2I Prompt — copy and paste into your image model")
+                st.code(t2i, language="markdown")
+            if i2v:
+                st.caption("🎞 I2V Animation Prompt — copy and paste into your video model")
+                st.code(i2v, language="markdown")
+            if not t2i and not i2v:
+                st.code(content, language="markdown")
+            st.divider()
+    else:
+        # Single scene (Product Shot)
+        t2i, i2v = _parse_t2i_i2v(output_text)
+        if t2i:
+            st.caption("🖼 T2I Prompt — copy and paste into your image model")
+            st.code(t2i, language="markdown")
+        if i2v:
+            st.caption("🎞 I2V Animation Prompt — copy and paste into your video model")
+            st.code(i2v, language="markdown")
+        if not t2i and not i2v:
+            # Fallback — show raw output
+            st.code(output_text, language="markdown")
+
+
 def init_session_state():
     session_vars = [
         "phase", "story_arc", "screenplay", "art_suggestions", "camera_suggestions",
@@ -99,7 +163,7 @@ def render_product_shot(engine_mode, model_name, api_key):
     if st.session_state.product_shot_output:
         st.success("Product Shot synthesis complete.")
         st.markdown("### 🍌 Nano Banana Pro Rendering Prompt")
-        st.markdown(st.session_state.product_shot_output)
+        render_prompt_blocks(st.session_state.product_shot_output)
 
         extracted_prompt = st.session_state.product_shot_output
 
@@ -274,7 +338,7 @@ def render_storytelling(engine_mode, model_name, api_key):
 
                 st.markdown("### 🍌 Nano Banana Pro Rendering Prompts")
                 formatted_prompts = st.session_state.final_prompts
-                st.markdown(formatted_prompts)
+                render_prompt_blocks(formatted_prompts)
 
                 st.markdown("### 🖼️ Storyboard Consolidation Prompt")
                 st.code(st.session_state.storyboard_prompt, language="markdown")

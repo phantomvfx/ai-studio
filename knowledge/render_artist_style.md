@@ -110,22 +110,32 @@ award-winning photography, ultra-sharp focus
 
 ## OUTPUT FORMAT
 
-For each scene, output the following blocks:
+For each scene, output the following structure exactly. Use the section labels as shown — they are used to split the prompt into editable blocks.
 
-### Scene [N] — [Scene Label]
+### Scene [N] — [scene_label]
 
 **T2I Prompt:**
-> (Full natural-language prompt following the formula above)
+[Subject]: (Who or what is in the frame — clothing, physicality, expression, props. Be hyper-specific.)
+[Action]: (What the subject is doing — posture, movement, gesture, gaze direction.)
+[Location/context]: (Environment, time of day, set design, weather, supporting elements.)
+[Composition]: (Shot type, framing, angle, depth of field — e.g. "medium-full shot, low angle, f/1.4 shallow DOF".)
+[Style]: (Camera body, lens, lighting setup, color grade, film stock, quality enhancers, aspect ratio.)
 
-**I2V Animation Prompt (optional):**
-> (Camera movement instructions for video generation: e.g., "Slow dolly-in toward the subject's face, subtle rack focus from background to foreground.")
+**I2V Animation Prompt:**
+(Camera movement instruction for video generation — direction, duration, rack focus, shake level.)
 
 ---
 
-## EXAMPLE PROMPT
+## EXAMPLE
+
+### Scene 1 — sh 01
 
 **T2I Prompt:**
-> A cinematic medium-full portrait of a striking fashion model wearing a tailored brown brushed-wool dress and sleek ankle boots, posing with a confident stance — weight shifted to the left, chin raised, gaze fixed off-camera. Set against a seamless deep cherry-red studio backdrop. Illuminated by a three-point softbox setup with a warm practical fill on camera left. Captured on a Hasselblad X2D 100C with an 85mm portrait lens at f/1.4, shallow depth of field isolating the subject from the backdrop. Fabric shows individual woven threads; skin renders with natural pores and subtle highlight on cheekbone. Fashion magazine editorial style, high saturation, punchy contrast, medium-format analog grain. 8K, photorealistic, award-winning photography. Aspect ratio 4:5.
+[Subject]: A striking fashion model wearing a tailored brown brushed-wool dress with visible warp threads, sleek ankle boots, and holding a structured leather handbag with gold clasp hardware.
+[Action]: Posing with a confident stance — weight shifted to the left hip, chin slightly raised, gaze fixed off-camera right.
+[Location/context]: A seamless deep cherry-red studio backdrop, polished concrete floor, no props.
+[Composition]: Medium-full shot, center-framed, 85mm portrait lens at f/1.4 — shallow depth of field isolating subject from backdrop.
+[Style]: Captured on a Hasselblad X2D 100C. Three-point softbox setup, warm practical fill on camera left. Fashion magazine editorial, high saturation, punchy contrast, medium-format analog grain, skin pores and fabric texture visible. 8K, photorealistic. Aspect ratio 4:5.
 
 **I2V Animation Prompt:**
-> Slow push-in from medium-full to medium-close-up over 4 seconds. Subtle rack focus from backdrop to subject's eyes. No camera shake.
+Slow push-in from medium-full to medium-close-up over 4 seconds. Subtle rack focus from backdrop to subject’s eyes. No camera shake.
